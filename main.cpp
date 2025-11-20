@@ -26,7 +26,7 @@ TdApp::TdApp() {
   send_query(td_api::make_object<td_api::getOption>("version"), {});
 }
 
-void banner() {
+void TdApp::banner() {
   std::cout << "+=v1.5==================================" << std::endl;
   std::cout << "| Enter action:" << std::endl;
   std::cout << "| > [q] quit" << std::endl;
@@ -39,7 +39,7 @@ void banner() {
   std::cout << "+=======================================" << std::endl;
 }
 
-void cls() { system("cls"); }
+void TdApp::cls() { system("cls"); }
 
 void TdApp::loop() {
   banner();
