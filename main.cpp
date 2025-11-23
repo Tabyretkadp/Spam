@@ -1,6 +1,7 @@
 #include <td/telegram/Client.h>
 #include <td/telegram/td_api.h>
 #include <td/telegram/td_api.hpp>
+#include <utility>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -40,6 +41,31 @@ void TdApp::banner() {
 }
 
 void TdApp::cls() { system("cls"); }
+
+void TdApp::updates_thread() {
+  if (!updates_thread_started) {
+    std::thread([&] {
+      while (true) {
+        auto response = client_manager_->receive(10);
+        if (response.object) {
+          process_response(std::move(response));
+        }
+      }
+    }).detach();
+    updates_thread_started = true;
+  }
+}
+
+void TdApp::send_msg(auto chat_id, std::string outText) {
+  auto send_message = td_api::make_object<td_api::sendMessage>();
+  send_message->chat_id_ = chat_id;
+  auto message_content = td_api::make_object<td_api::inputMessageText>();
+  message_content->text_ = td_api::make_object<td_api::formattedText>();
+  message_content->text_->text_ = std::move(outText);
+  send_message->input_message_content_ = std::move(message_content);
+
+  send_query(std::move(send_message), {});
+}
 
 void TdApp::loop() {
   banner();
@@ -133,17 +159,7 @@ void TdApp::loop() {
         }
         std::cin.ignore();
 
-        if (!updates_thread_started) {
-          std::thread([&] {
-            while (true) {
-              auto response = client_manager_->receive(5);
-              if (response.object) {
-                process_response(std::move(response));
-              }
-            }
-          }).detach();
-          updates_thread_started = true;
-        }
+        updates_thread();
 
         while (true) {
           send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
@@ -242,6 +258,53 @@ void TdApp::process_update(td_api::object_ptr<td_api::Object> update) {
           [&](td_api::updateUser &update_user) {
             auto user_id = update_user.user_->id_;
             users_[user_id] = std::move(update_user.user_);
+          },
+          [&](td_api::updateNewMessage &update_new_message) {
+            if (update_new_message.message_->is_outgoing_) {
+              return;
+            }
+
+            auto chat_id = update_new_message.message_->chat_id_;
+            std::string sender_name;
+            td_api::downcast_call(
+                *update_new_message.message_->sender_id_,
+                overloaded(
+                    [this, &sender_name](td_api::messageSenderUser &user) {
+                      sender_name = get_user_name(user.user_id_);
+                    },
+                    [this, &sender_name](td_api::messageSenderChat &chat) {
+                      sender_name = get_chat_title(chat.chat_id_);
+                    }));
+            std::string text;
+            if (update_new_message.message_->content_->get_id() ==
+                td_api::messageText::ID) {
+              text = static_cast<td_api::messageText &>(
+                         *update_new_message.message_->content_)
+                         .text_->text_;
+            }
+
+            std::cout << "Receive message: [chat_id:" << chat_id
+                      << "] [from:" << sender_name << "] [" << text << "]"
+                      << std::endl;
+
+            std::string outText;
+
+            if (text.find("zxc") != std::string::npos) {
+              outText = "ky!";
+              send_msg(chat_id, outText);
+
+              auto search_query =
+                  td::td_api::make_object<td::td_api::searchPublicChat>(text);
+              // send_query(std::move(search_query), [&](){})
+
+            } else {
+              outText = "Привет, пришли мне username на тг канал без '@', "
+                        "(пример: roflstelegram), и я подпишусь на "
+                        "него\n\nВот ссылки которые я "
+                        "советую:\nhttps://t.me/webmmp4☠️\nhttps://t.me/"
+                        "zayciest🥶\nhttps://t.me/roflstelegram🫡";
+              send_msg(chat_id, outText);
+            }
           },
           [](auto &update) {}));
 }

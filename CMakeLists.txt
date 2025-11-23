@@ -6,4 +6,4 @@ find_package(Td 1.8.56 REQUIRED)
 
 add_executable(Spam main.cpp main.h)
 target_link_libraries(Spam PRIVATE Td::TdStatic)
-set_property(TARGET Spam PROPERTY CXX_STANDARD 14)
+set_property(TARGET Spam PROPERTY CXX_STANDARD 20)
