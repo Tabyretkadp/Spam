@@ -33,8 +33,8 @@ void TdApp::banner() {
   std::cout << "| > [q] quit" << std::endl;
   std::cout << "| > [u] updates and request" << std::endl;
   std::cout << "| > [c/cg] show chat/show gruop" << std::endl;
-  std::cout << "| > [m/fm] send message/forward messages" << std::endl;
-  std::cout << "| > [me] clear console" << std::endl;
+  std::cout << "| > [m] send message" << std::endl;
+  // std::cout << "| > [me] clear console" << std::endl;
   std::cout << "| > [cls] clear console" << std::endl;
   std::cout << "| > [l] logout" << std::endl;
   std::cout << "+=======================================" << std::endl;
@@ -65,6 +65,19 @@ void TdApp::send_msg(auto chat_id, std::string outText) {
   send_message->input_message_content_ = std::move(message_content);
 
   send_query(std::move(send_message), {});
+}
+
+bool TdApp::is_valid_username(const std::string &username) {
+  if (username.empty() || username.length() > 32)
+    return false;
+
+  for (char c : username) {
+    if (!std::isalnum(c) && c != '_') {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void TdApp::loop() {
@@ -283,25 +296,38 @@ void TdApp::process_update(td_api::object_ptr<td_api::Object> update) {
                          .text_->text_;
             }
 
-            std::cout << "Receive message: [chat_id:" << chat_id
-                      << "] [from:" << sender_name << "] [" << text << "]"
-                      << std::endl;
-
             std::string outText;
-
-            if (text.find("zxc") != std::string::npos) {
-              outText = "ky!";
+            if (!text.empty() && is_valid_username(text)) {
+              outText = "Пытаюсь подписаться на @" + text + "...";
               send_msg(chat_id, outText);
 
-              auto search_query =
-                  td::td_api::make_object<td::td_api::searchPublicChat>(text);
-              // send_query(std::move(search_query), [&](){})
+              send_query(
+                  td::td_api::make_object<td::td_api::searchPublicChat>(text),
+                  [&](Object object) {
+                    if (object->get_id() == td::td_api::error::ID) {
+                      send_msg(chat_id, "Канал не найден :(");
+                    } else {
+                      auto chat =
+                          td::td_api::move_object_as<td::td_api::chat>(object);
+
+                      auto join_request =
+                          td::td_api::make_object<td::td_api::joinChat>();
+                      join_request->chat_id_ = chat->id_;
+
+                      send_query(std::move(join_request), [&](Object object) {
+                        if (object->get_id() == td::td_api::error::ID) {
+                          send_msg(chat_id, "Не удалось подписаться :(");
+                        }
+                      });
+                    }
+                    send_msg(chat_id, "Подписка успешна ;)");
+                  });
 
             } else {
-              outText = "Привет, пришли мне username на тг канал без '@', "
-                        "(пример: roflstelegram), и я подпишусь на "
-                        "него\n\nВот ссылки которые я "
-                        "советую:\nhttps://t.me/webmmp4☠️\nhttps://t.me/"
+              outText = "Привет, пришли мне username на тг канал без "
+                        "@, (пример: roflstelegram), и я подпишусь на "
+                        "него\n\nВот ссылки на которые нужно подписатся:"
+                        "\nhttps://t.me/webmmp4☠️\nhttps://t.me/"
                         "zayciest🥶\nhttps://t.me/roflstelegram🫡";
               send_msg(chat_id, outText);
             }

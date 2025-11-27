@@ -46,6 +46,10 @@ public:
   void updates_thread();
   void send_msg(auto chat_id, std::string outText);
   void cls();
+  bool is_valid_username(const std::string &username);
+  void
+  subscribe_to_channel(const std::string &username,
+                       std::function<void(bool, const std::string &)> callback);
   void loop();
 
 private:
