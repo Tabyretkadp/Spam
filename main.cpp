@@ -35,6 +35,7 @@ void TdApp::banner() {
   std::cout << "| > [u] updates and request" << std::endl;
   std::cout << "| > [c/cg] show chat/show gruop" << std::endl;
   std::cout << "| > [m] send message" << std::endl;
+  std::cout << "| > [b] msg bomber" << std::endl;
   // std::cout << "| > [me] clear console" << std::endl;
   std::cout << "| > [cls] clear console" << std::endl;
   std::cout << "| > [l] logout" << std::endl;
@@ -185,25 +186,48 @@ void TdApp::loop() {
                            td::move_tl_object_as<td_api::chats>(object);
                        for (auto chat_id : chats->chat_ids_) {
                          if (chat_id < 0) {
-                           auto send_message =
-                               td_api::make_object<td_api::sendMessage>();
-                           send_message->chat_id_ = chat_id;
-                           auto message_content =
-                               td_api::make_object<td_api::inputMessageText>();
-                           message_content->text_ =
-                               td_api::make_object<td_api::formattedText>();
-                           message_content->text_->text_ = std::move(text);
-                           send_message->input_message_content_ =
-                               std::move(message_content);
-
-                           send_query(std::move(send_message), {});
+                           send_msg(chat_id, text);
                          }
                        }
                      });
           std::cout << "Done!" << std::endl;
           std::this_thread::sleep_for(std::chrono::seconds(time));
         }
-      } else if (action == "me") {
+      } else if (action == "b") {
+        int time;
+        std::string text;
+        std::int64_t chat_id;
+
+        std::cout << "[0] - break" << std::endl;
+        std::cout << "Input chat_id: ";
+        std::cin >> chat_id;
+        if (text == "0") {
+          continue;
+        }
+
+        std::cout << "[0] - break" << std::endl;
+        std::cout << "Input text: ";
+        std::getline(std::cin, text);
+        if (text == "0") {
+          continue;
+        }
+
+        size_t pos = 0;
+        while ((pos = text.find("\\n", pos)) != std::string::npos) {
+          text.replace(pos, 2, "\n");
+          pos += 1;
+        }
+
+        std::cout << "Input time: ";
+        std::cin >> time;
+        if (time == 0) {
+          continue;
+        }
+        std::cin.ignore();
+
+        send_msg(chat_id, text);
+        std::cout << "Done!" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(time));
       }
     }
   }
