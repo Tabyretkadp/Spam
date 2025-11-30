@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -320,16 +321,30 @@ void TdApp::process_update(td_api::object_ptr<td_api::Object> update) {
                         }
                       });
                     }
+
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
                     send_msg(chat_id, "Подписка успешна ;)");
                   });
 
             } else {
-              outText = "Привет, пришли мне username на тг канал без "
-                        "@, (пример: roflstelegram), и я подпишусь на "
-                        "него\n\nВот ссылки на которые нужно подписатся:"
-                        "\nhttps://t.me/webmmp4☠️\nhttps://t.me/"
-                        "zayciest🥶\nhttps://t.me/roflstelegram🫡";
-              send_msg(chat_id, outText);
+              std::fstream file("outtext.txt");
+              if (!file.is_open()) {
+                std::cout << "out message: NO" << std::endl;
+                std::cout << "if u want out message: create file "
+                             "'outtext.txt', and input in text"
+                          << std::endl;
+                outText = "";
+                send_msg(chat_id, outText);
+              } else {
+                getline(file, outText);
+                file.close();
+                size_t pos = 0;
+                while ((pos = outText.find("\\n", pos)) != std::string::npos) {
+                  outText.replace(pos, 2, "\n");
+                  pos += 1;
+                }
+                send_msg(chat_id, outText);
+              }
             }
           },
           [](auto &update) {}));
@@ -432,8 +447,8 @@ void TdApp::on_authorization_state_update() {
             request->database_directory_ = "../tdlib";
             request->use_message_database_ = true;
             request->use_secret_chats_ = true;
-            request->api_id_ = 23315578;
-            request->api_hash_ = "14751b0a67ad0d89697e57d03672bce6";
+            request->api_id_ = 94575;
+            request->api_hash_ = "a3406de8d171bb422bb6ddf3bbd800e2";
             request->system_language_code_ = "ru";
             request->device_model_ = "Desktop";
             request->application_version_ = "1.0";
@@ -453,11 +468,13 @@ void TdApp::check_authentication_error(Object object) {
 std::uint64_t TdApp::next_query_id() { return ++current_query_id_; }
 
 int main() {
-  // SetConsoleOutputCP(65001);
-  // SetConsoleCP(65001);
+#ifdef _WIN32
+  SetConsoleOutputCP(65001);
+  SetConsoleCP(65001);
 
-  // std::setlocale(LC_ALL, "ru_RU.UTF-8");
-  // std::locale::global(std::locale("ru_RU.UTF-8"));
+  std::setlocale(LC_ALL, "ru_RU.UTF-8");
+  std::locale::global(std::locale("ru_RU.UTF-8"));
+#endif
 
   TdApp example;
   example.loop();
