@@ -29,26 +29,47 @@ TdApp::TdApp() {
 }
 
 void TdApp::banner() {
-  std::cout << "+=v1.5==================================" << std::endl;
-  std::cout << "| Enter action:" << std::endl;
-  std::cout << "| > [q] quit" << std::endl;
-  std::cout << "| > [u] updates and request" << std::endl;
-  std::cout << "| > [c/cg] show chat/show gruop" << std::endl;
-  std::cout << "| > [m] send message" << std::endl;
-  std::cout << "| > [b] msg bomber" << std::endl;
-  // std::cout << "| > [me] clear console" << std::endl;
-  std::cout << "| > [cls] clear console" << std::endl;
-  std::cout << "| > [l] logout" << std::endl;
-  std::cout << "+=======================================" << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mEnter action:"
+            << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [q] quit" << std::endl;
+  std::cout
+      << "\033[38;5;196m|\033[0m \033[38;5;255m> [c/cg] show chat/show gruop"
+      << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [m] send message"
+            << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [b] msg bomber"
+            << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [cls] clear console"
+            << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [l] logout\033[0m"
+            << std::endl;
 }
 
-void TdApp::cls() { system("cls"); }
+void TdApp::cls() {
+#ifdef _WIN32
+  system("cls");
+#endif
+  system("clear");
+
+  process_response(client_manager_->receive(10));
+}
+
+void TdApp::updates() {
+  while (true) {
+    auto response = client_manager_->receive(0);
+    if (response.object) {
+      process_response(std::move(response));
+    } else {
+      break;
+    }
+  }
+}
 
 void TdApp::updates_thread() {
   if (!updates_thread_started) {
-    std::thread([&] {
+    std::thread([this] {
       while (true) {
-        auto response = client_manager_->receive(10);
+        auto response = client_manager_->receive(5);
         if (response.object) {
           process_response(std::move(response));
         }
@@ -83,7 +104,6 @@ bool TdApp::is_valid_username(const std::string &username) {
 }
 
 void TdApp::loop() {
-  banner();
   while (true) {
     if (need_restart_) {
       restart();
@@ -99,21 +119,9 @@ void TdApp::loop() {
         continue;
       }
       if (action == "q") {
+        updates_thread_started_down = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         return;
-      }
-      if (action == "u") {
-        std::cout << "Checking for updates..." << std::endl;
-        while (true) {
-          auto response = client_manager_->receive(0);
-          if (response.object) {
-            process_response(std::move(response));
-          } else {
-            break;
-          }
-        }
-      } else if (action == "close") {
-        std::cout << "Closing..." << std::endl;
-        send_query(td_api::make_object<td_api::close>(), {});
       } else if (action == "cls") {
         cls();
         banner();
@@ -136,6 +144,7 @@ void TdApp::loop() {
                        }
                      }
                    });
+        updates();
       } else if (action == "c") {
         std::cout << "Loading chat list..." << std::endl;
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
@@ -152,6 +161,7 @@ void TdApp::loop() {
                        }
                      }
                    });
+        updates();
       } else if (action == "m") {
         int time;
         std::string text;
@@ -174,7 +184,7 @@ void TdApp::loop() {
         }
         std::cin.ignore();
 
-        updates_thread();
+        // updates_thread();
 
         while (true) {
           send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
@@ -235,7 +245,7 @@ void TdApp::loop() {
 
 void TdApp::restart() {
   client_manager_.reset();
-  TdApp();
+  // TdApp();
 }
 
 void TdApp::send_query(td_api::object_ptr<td_api::Function> f,
@@ -353,10 +363,6 @@ void TdApp::process_update(td_api::object_ptr<td_api::Object> update) {
             } else {
               std::fstream file("outtext.txt");
               if (!file.is_open()) {
-                std::cout << "out message: NO" << std::endl;
-                std::cout << "if u want out message: create file "
-                             "'outtext.txt', and input in text"
-                          << std::endl;
                 outText = "";
                 send_msg(chat_id, outText);
               } else {
@@ -389,7 +395,14 @@ void TdApp::on_authorization_state_update() {
       overloaded(
           [&](td_api::authorizationStateReady &) {
             are_authorized_ = true;
-            std::cout << "Authorization is completed" << std::endl;
+            std::cout << "\033[38;5;196m";
+            std::cout << "──────────── ✿ ─────────────\n";
+            std::cout << "= ";
+            std::cout << "\033[38;5;255mВъод в телеграм выполнен \033[0m";
+            std::cout << "\033[38;5;196m= \n";
+            std::cout << "──────────── ✿ ─────────────";
+            std::cout << "\033[0m" << std::endl;
+            banner();
           },
           [&](td_api::authorizationStateLoggingOut &) {
             are_authorized_ = false;
@@ -498,6 +511,11 @@ int main() {
 
   std::setlocale(LC_ALL, "ru_RU.UTF-8");
   std::locale::global(std::locale("ru_RU.UTF-8"));
+
+  HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+  DWORD mode = 0;
+  GetConsoleMode(hConsole, &mode);
+  SetConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #endif
 
   TdApp example;

@@ -37,6 +37,7 @@ template <class... F> auto overloaded(F... f) {
 namespace td_api = td::td_api;
 
 static bool updates_thread_started = false;
+static bool updates_thread_started_down = false;
 
 class TdApp {
 public:
@@ -47,9 +48,7 @@ public:
   void send_msg(auto chat_id, std::string outText);
   void cls();
   bool is_valid_username(const std::string &username);
-  void
-  subscribe_to_channel(const std::string &username,
-                       std::function<void(bool, const std::string &)> callback);
+  void updates();
   void loop();
 
 private:
