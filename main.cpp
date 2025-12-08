@@ -1,3 +1,4 @@
+#include <ncurses.h>
 #include <td/telegram/Client.h>
 #include <td/telegram/td_api.h>
 #include <td/telegram/td_api.hpp>
@@ -68,7 +69,7 @@ void TdApp::updates() {
 void TdApp::updates_thread() {
   if (!updates_thread_started) {
     std::thread([this] {
-      while (true) {
+      while (!updates_thread_started_down) {
         auto response = client_manager_->receive(5);
         if (response.object) {
           process_response(std::move(response));
@@ -119,8 +120,6 @@ void TdApp::loop() {
         continue;
       }
       if (action == "q") {
-        updates_thread_started_down = true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         return;
       } else if (action == "cls") {
         cls();
@@ -184,9 +183,23 @@ void TdApp::loop() {
         }
         std::cin.ignore();
 
-        // updates_thread();
+        std::cout << "q - quit" << std::endl;
+
+        initscr();
+        cbreak();
+        noecho();
+        timeout(0);
+
+        updates_thread();
 
         while (true) {
+          int ch = getch();
+          if (ch != ERR) {
+            if (ch == 'q' || ch == 'Q') {
+              break;
+            }
+            refresh();
+          }
           send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                      [&, text](Object object) {
                        if (object->get_id() == td_api::error::ID) {
@@ -203,6 +216,11 @@ void TdApp::loop() {
           std::cout << "Done!" << std::endl;
           std::this_thread::sleep_for(std::chrono::seconds(time));
         }
+
+        endwin();
+        updates_thread_started = false;
+        updates_thread_started_down = false;
+
       } else if (action == "b") {
         int time;
         std::string text;
