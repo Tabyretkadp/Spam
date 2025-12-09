@@ -29,7 +29,9 @@
 
 ## Screenshots
 
-<img src="screen/Screenshot_20251127_213602.png" alt="Screen" width="500"/>
+<img src="screen/Screenshot_20251209_162146.png" alt="Screen" width="500"/>
+<img src="screen/Screenshot_20251209_162456.png" alt="Screen" width="500"/>
+<img src="screen/Screenshot_20251209_162253.png" alt="Screen" width="500"/>
 
 ---
 
