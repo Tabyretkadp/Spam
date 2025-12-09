@@ -150,9 +150,11 @@ void TdApp::loop() {
                      auto chats = td::move_tl_object_as<td_api::chats>(object);
                      for (auto chat_id : chats->chat_ids_) {
                        if (chat_id < 0) {
-                         std::cout << "\033[38;5;196m|\033[0m " << chat_id
+                         std::cout << "\033[38;5;196m|\033[0m "
+                                   << "\033[38;5;255m" << chat_id
                                    << "\t\033[38;5;196m->\t\033[0m"
-                                   << chat_title_[chat_id] << std::endl;
+                                   << "\033[38;5;255m" << chat_title_[chat_id]
+                                   << "\033[0m" << std::endl;
                        }
                      }
                    });
@@ -167,9 +169,11 @@ void TdApp::loop() {
                      auto chats = td::move_tl_object_as<td_api::chats>(object);
                      for (auto chat_id : chats->chat_ids_) {
                        if (chat_id > 0) {
-                         std::cout << "\033[38;5;196m|\033[0m " << chat_id
+                         std::cout << "\033[38;5;196m|\033[0m "
+                                   << "\033[38;5;255m" << chat_id
                                    << "\t\033[38;5;196m->\t\033[0m"
-                                   << chat_title_[chat_id] << std::endl;
+                                   << "\033[38;5;255m" << chat_title_[chat_id]
+                                   << "\033[0m" << std::endl;
                        }
                      }
                    });
