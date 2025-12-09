@@ -44,6 +44,7 @@ public:
   TdApp();
 
   void banner();
+  void banner_all_command();
   void updates_thread();
   void send_msg(auto chat_id, std::string outText);
   void cls();

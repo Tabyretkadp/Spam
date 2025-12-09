@@ -43,8 +43,18 @@ void TdApp::banner() {
             << std::endl;
   std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [l] logout\033[0m"
             << std::endl;
-  std::cout << std::endl;
+  std::cout
+      << "\033[38;5;196m|\033[0m \033[38;5;255m> [h] show all command\033[0m"
+      << std::endl;
+}
+
+void TdApp::banner_all_command() {
   std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [0] break\033[0m"
+            << std::endl;
+  std::cout
+      << "\033[38;5;196m|\033[0m \033[38;5;255m> [1][beta] subscribe + like"
+      << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [...] ...\033[0m"
             << std::endl;
 }
 
@@ -121,9 +131,14 @@ void TdApp::loop() {
       }
       if (action == "q") {
         return;
-      } else if (action == "cls") {
+      } else if (action == "cls" || action == "clear") {
         cls();
         banner();
+      } else if (action == "...") {
+        std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> ...\033[0m"
+                  << std::endl;
+      } else if (action == "h") {
+        banner_all_command();
       } else if (action == "l") {
         send_query(td_api::make_object<td_api::logOut>(), {});
       } else if (action == "cg") {
@@ -141,7 +156,7 @@ void TdApp::loop() {
                        }
                      }
                    });
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         updates();
       } else if (action == "c") {
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
@@ -159,7 +174,7 @@ void TdApp::loop() {
                      }
                    });
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         updates();
       } else if (action == "m") {
         int time;
@@ -168,8 +183,6 @@ void TdApp::loop() {
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput text: \033[0m";
         std::getline(std::cin, text);
         if (text == "0") {
-          cls();
-          banner();
           continue;
         }
         size_t pos = 0;
@@ -180,8 +193,6 @@ void TdApp::loop() {
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput time: \033[0m";
         std::cin >> time;
         if (time == 0) {
-          cls();
-          banner();
           continue;
         }
         std::cin.ignore();
@@ -209,7 +220,43 @@ void TdApp::loop() {
         updates_thread_started = false;
         updates_thread_started_down = false;
 
-      } else if (action == "b") {
+      } else if (action == "1") {
+        std::string public_chat;
+        std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput chat: \033[0m";
+        std::cin >> public_chat;
+        send_query(
+            td_api::make_object<td_api::searchPublicChat>(public_chat),
+            [this](Object object) {
+              if (object->get_id() == td_api::error::ID) {
+                std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mCan't find "
+                             "the channel :(\033[0m"
+                          << std::endl;
+                return;
+              }
+
+              std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+              auto chat = td_api::move_object_as<td_api::chat>(object);
+              auto join = td_api::make_object<td_api::joinChat>();
+
+              join->chat_id_ = chat->id_;
+
+              send_query(std::move(join), [this](Object object) {
+                if (object->get_id() == td_api::error::ID) {
+                  std::cout << "\033[38;5;196m|\033[0m "
+                               "\033[38;5;255mCould not subscribe\033[0m"
+                            << std::endl;
+                  return;
+                } else {
+                  std::cout << "\033[38;5;196m|\033[0m "
+                               "\033[38;5;255mSubscribed!\033[0m"
+                            << std::endl;
+                }
+              });
+              std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            });
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        updates();
       }
     }
   }
