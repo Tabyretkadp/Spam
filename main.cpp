@@ -1,4 +1,3 @@
-#include <ncurses.h>
 #include <td/telegram/Client.h>
 #include <td/telegram/td_api.h>
 #include <td/telegram/td_api.hpp>
@@ -38,11 +37,14 @@ void TdApp::banner() {
       << std::endl;
   std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [m] send message"
             << std::endl;
-  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [b] msg bomber"
-            << std::endl;
+  // std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [b] msg bomber" <<
+  // std::endl;
   std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [cls] clear console"
             << std::endl;
   std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [l] logout\033[0m"
+            << std::endl;
+  std::cout << std::endl;
+  std::cout << "\033[38;5;196m|\033[0m \033[38;5;255m> [0] break\033[0m"
             << std::endl;
 }
 
@@ -51,8 +53,6 @@ void TdApp::cls() {
   system("cls");
 #endif
   system("clear");
-
-  process_response(client_manager_->receive(10));
 }
 
 void TdApp::updates() {
@@ -111,7 +111,7 @@ void TdApp::loop() {
     } else if (!are_authorized_) {
       process_response(client_manager_->receive(10));
     } else {
-      std::cout << "> ";
+      std::cout << "\033[38;5;196m|\033[0m > ";
       std::string line;
       std::getline(std::cin, line);
       std::istringstream ss(line);
@@ -125,10 +125,8 @@ void TdApp::loop() {
         cls();
         banner();
       } else if (action == "l") {
-        std::cout << "Logging out..." << std::endl;
         send_query(td_api::make_object<td_api::logOut>(), {});
       } else if (action == "cg") {
-        std::cout << "Loading gruop list..." << std::endl;
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                    [&](Object object) {
                      if (object->get_id() == td_api::error::ID) {
@@ -137,15 +135,15 @@ void TdApp::loop() {
                      auto chats = td::move_tl_object_as<td_api::chats>(object);
                      for (auto chat_id : chats->chat_ids_) {
                        if (chat_id < 0) {
-                         std::cout << "[chat_id:" << chat_id
-                                   << "] [title:" << chat_title_[chat_id] << "]"
-                                   << std::endl;
+                         std::cout << "\033[38;5;196m|\033[0m " << chat_id
+                                   << "\t\033[38;5;196m->\t\033[0m"
+                                   << chat_title_[chat_id] << std::endl;
                        }
                      }
                    });
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         updates();
       } else if (action == "c") {
-        std::cout << "Loading chat list..." << std::endl;
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                    [&](Object object) {
                      if (object->get_id() == td_api::error::ID) {
@@ -154,21 +152,24 @@ void TdApp::loop() {
                      auto chats = td::move_tl_object_as<td_api::chats>(object);
                      for (auto chat_id : chats->chat_ids_) {
                        if (chat_id > 0) {
-                         std::cout << "[chat_id:" << chat_id
-                                   << "] [title:" << chat_title_[chat_id] << "]"
-                                   << std::endl;
+                         std::cout << "\033[38;5;196m|\033[0m " << chat_id
+                                   << "\t\033[38;5;196m->\t\033[0m"
+                                   << chat_title_[chat_id] << std::endl;
                        }
                      }
                    });
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         updates();
       } else if (action == "m") {
         int time;
         std::string text;
 
-        std::cout << "[0] - break" << std::endl;
-        std::cout << "Input text: ";
+        std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput text: \033[0m";
         std::getline(std::cin, text);
         if (text == "0") {
+          cls();
+          banner();
           continue;
         }
         size_t pos = 0;
@@ -176,30 +177,18 @@ void TdApp::loop() {
           text.replace(pos, 2, "\n");
           pos += 1;
         }
-        std::cout << "Input time: ";
+        std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput time: \033[0m";
         std::cin >> time;
         if (time == 0) {
+          cls();
+          banner();
           continue;
         }
         std::cin.ignore();
 
-        std::cout << "q - quit" << std::endl;
-
-        initscr();
-        cbreak();
-        noecho();
-        timeout(0);
-
         updates_thread();
 
         while (true) {
-          int ch = getch();
-          if (ch != ERR) {
-            if (ch == 'q' || ch == 'Q') {
-              break;
-            }
-            refresh();
-          }
           send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                      [&, text](Object object) {
                        if (object->get_id() == td_api::error::ID) {
@@ -217,45 +206,10 @@ void TdApp::loop() {
           std::this_thread::sleep_for(std::chrono::seconds(time));
         }
 
-        endwin();
         updates_thread_started = false;
         updates_thread_started_down = false;
 
       } else if (action == "b") {
-        int time;
-        std::string text;
-        std::int64_t chat_id;
-
-        std::cout << "[0] - break" << std::endl;
-        std::cout << "Input chat_id: ";
-        std::cin >> chat_id;
-        if (text == "0") {
-          continue;
-        }
-
-        std::cout << "[0] - break" << std::endl;
-        std::cout << "Input text: ";
-        std::getline(std::cin, text);
-        if (text == "0") {
-          continue;
-        }
-
-        size_t pos = 0;
-        while ((pos = text.find("\\n", pos)) != std::string::npos) {
-          text.replace(pos, 2, "\n");
-          pos += 1;
-        }
-
-        std::cout << "Input time: ";
-        std::cin >> time;
-        if (time == 0) {
-          continue;
-        }
-        std::cin.ignore();
-
-        send_msg(chat_id, text);
-        std::cout << "Done!" << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(time));
       }
     }
   }
@@ -537,6 +491,7 @@ int main() {
 #endif
 
   TdApp example;
+  example.cls();
   example.loop();
 
   return 0;
