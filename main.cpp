@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <ctime>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -158,7 +159,7 @@ void TdApp::loop() {
                        }
                      }
                    });
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(70));
         updates();
       } else if (action == "c") {
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
@@ -178,10 +179,10 @@ void TdApp::loop() {
                      }
                    });
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(70));
         updates();
       } else if (action == "m") {
-        int time;
+        int time_in;
         std::string text;
 
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput text: \033[0m";
@@ -195,8 +196,8 @@ void TdApp::loop() {
           pos += 1;
         }
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput time: \033[0m";
-        std::cin >> time;
-        if (time == 0) {
+        std::cin >> time_in;
+        if (time_in == 0) {
           continue;
         }
         std::cin.ignore();
@@ -204,6 +205,8 @@ void TdApp::loop() {
         updates_thread();
 
         while (true) {
+          std::time_t now = time(0);
+          std::tm *ltm = localtime(&now);
           send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                      [&, text](Object object) {
                        if (object->get_id() == td_api::error::ID) {
@@ -217,8 +220,14 @@ void TdApp::loop() {
                          }
                        }
                      });
-          std::cout << "Done!" << std::endl;
-          std::this_thread::sleep_for(std::chrono::seconds(time));
+          std::cout << "\033[38;5;196m| \033[0m" << "\033[38;5;196m[\033[0m"
+                    << "\033[38;5;255m" << ltm->tm_hour
+                    << "\033[38;5;196m:" << "\033[38;5;255m" << ltm->tm_min
+                    << "\033[38;5;196m:" << "\033[38;5;255m" << ltm->tm_sec
+                    << "\033[38;5;196m] \033[38;5;255m" << "\t->\t"
+                    << "Message send!"
+                    << "\033[0m" << std::endl;
+          std::this_thread::sleep_for(std::chrono::seconds(time_in));
         }
 
         updates_thread_started = false;
@@ -228,38 +237,35 @@ void TdApp::loop() {
         std::string public_chat;
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput chat: \033[0m";
         std::cin >> public_chat;
-        send_query(
-            td_api::make_object<td_api::searchPublicChat>(public_chat),
-            [this](Object object) {
-              if (object->get_id() == td_api::error::ID) {
-                std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mCan't find "
-                             "the channel :(\033[0m"
-                          << std::endl;
-                return;
-              }
+        send_query(td_api::make_object<td_api::searchPublicChat>(public_chat),
+                   [this](Object object) {
+                     if (object->get_id() == td_api::error::ID) {
+                       std::cout
+                           << "\033[38;5;196m|\033[0m \033[38;5;255mCan't find "
+                              "the channel :(\033[0m"
+                           << std::endl;
+                       return;
+                     }
 
-              std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                     auto chat = td_api::move_object_as<td_api::chat>(object);
+                     auto join = td_api::make_object<td_api::joinChat>();
 
-              auto chat = td_api::move_object_as<td_api::chat>(object);
-              auto join = td_api::make_object<td_api::joinChat>();
+                     join->chat_id_ = chat->id_;
 
-              join->chat_id_ = chat->id_;
-
-              send_query(std::move(join), [this](Object object) {
-                if (object->get_id() == td_api::error::ID) {
-                  std::cout << "\033[38;5;196m|\033[0m "
-                               "\033[38;5;255mCould not subscribe\033[0m"
-                            << std::endl;
-                  return;
-                } else {
-                  std::cout << "\033[38;5;196m|\033[0m "
-                               "\033[38;5;255mSubscribed!\033[0m"
-                            << std::endl;
-                }
-              });
-              std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            });
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                     send_query(std::move(join), [this](Object object) {
+                       if (object->get_id() == td_api::error::ID) {
+                         std::cout << "\033[38;5;196m|\033[0m "
+                                      "\033[38;5;255mCould not subscribe\033[0m"
+                                   << std::endl;
+                         return;
+                       } else {
+                         std::cout << "\033[38;5;196m|\033[0m "
+                                      "\033[38;5;255mSubscribed!\033[0m"
+                                   << std::endl;
+                       }
+                     });
+                   });
+        std::this_thread::sleep_for(std::chrono::seconds(5));
         updates();
       }
     }
