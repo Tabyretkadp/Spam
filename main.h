@@ -53,6 +53,8 @@ public:
   void loop();
 
 private:
+  bool CandL = true;
+
   using Object = td_api::object_ptr<td_api::Object>;
   std::unique_ptr<td::ClientManager> client_manager_;
   std::int32_t client_id_{0};
