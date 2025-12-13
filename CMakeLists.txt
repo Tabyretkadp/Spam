@@ -4,6 +4,6 @@ project(Spam VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td 1.8.56 REQUIRED)
 
-add_executable(Spam main.cpp main.h)
+add_executable(Spam main.cpp core/ftdlib/tdapp.cpp core/ftdlib/tdapp.cpp core/func/func_main.cpp core/func/func_main.h)
 target_link_libraries(Spam PRIVATE Td::TdStatic)
 set_property(TARGET Spam PROPERTY CXX_STANDARD 20)

@@ -36,41 +36,31 @@ template <class... F> auto overloaded(F... f) {
 
 namespace td_api = td::td_api;
 
-static bool updates_thread_started = false;
-static bool updates_thread_started_down = false;
-
 class TdApp {
 public:
   TdApp();
 
-  void banner();
-  void banner_all_command();
-  void updates_thread(int arg);
-  void send_msg(auto chat_id, std::string outText);
-  void cls();
-  bool is_valid_username(const std::string &username);
-  void loop();
-
-private:
-  bool CandL = true;
-
-  using Object = td_api::object_ptr<td_api::Object>;
   std::unique_ptr<td::ClientManager> client_manager_;
-  std::int32_t client_id_{0};
-
-  td_api::object_ptr<td_api::AuthorizationState> authorization_state_;
+  using Object = td_api::object_ptr<td_api::Object>;
   bool are_authorized_{false};
   bool need_restart_{false};
-  std::uint64_t current_query_id_{0};
-  std::uint64_t authentication_query_id_{0};
-  std::map<std::uint64_t, std::function<void(Object)>> handlers_;
-  std::map<std::int64_t, td_api::object_ptr<td_api::user>> users_;
   std::map<std::int64_t, std::string> chat_title_;
 
   void restart();
   void send_query(td_api::object_ptr<td_api::Function> f,
                   std::function<void(Object)> handler);
   void process_response(td::ClientManager::Response response);
+
+private:
+  std::int32_t client_id_{0};
+
+  td_api::object_ptr<td_api::AuthorizationState> authorization_state_;
+
+  std::uint64_t current_query_id_{0};
+  std::uint64_t authentication_query_id_{0};
+  std::map<std::uint64_t, std::function<void(Object)>> handlers_;
+  std::map<std::int64_t, td_api::object_ptr<td_api::user>> users_;
+
   std::string get_user_name(std::int64_t user_id);
   std::string get_chat_title(std::int64_t chat_id);
   void process_update(td_api::object_ptr<td_api::Object> update);
