@@ -14,6 +14,7 @@
 #include <memory>
 #include <string>
 
+#include "../visual/banners.h"
 #include "./tdapp.h"
 
 TdApp::TdApp() {
@@ -113,6 +114,7 @@ void TdApp::on_authorization_state_update() {
             std::cout << "\033[38;5;196m= \n";
             std::cout << "──────────── ✿ ─────────────";
             std::cout << "\033[0m" << std::endl;
+            banner();
           },
           [&](td_api::authorizationStateLoggingOut &) {
             are_authorized_ = false;
