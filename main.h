@@ -45,11 +45,10 @@ public:
 
   void banner();
   void banner_all_command();
-  void updates_thread();
+  void updates_thread(int arg);
   void send_msg(auto chat_id, std::string outText);
   void cls();
   bool is_valid_username(const std::string &username);
-  void updates();
   void loop();
 
 private:

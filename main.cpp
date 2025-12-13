@@ -66,28 +66,28 @@ void TdApp::cls() {
   system("clear");
 }
 
-void TdApp::updates() {
-  while (true) {
-    auto response = client_manager_->receive(0);
-    if (response.object) {
-      process_response(std::move(response));
-    } else {
-      break;
-    }
-  }
-}
-
-void TdApp::updates_thread() {
-  if (!updates_thread_started) {
-    std::thread([this] {
-      while (!updates_thread_started_down) {
-        auto response = client_manager_->receive(5);
-        if (response.object) {
-          process_response(std::move(response));
+void TdApp::updates_thread(int arg) {
+  if (arg == 1) {
+    if (!updates_thread_started) {
+      std::thread([this] {
+        while (!updates_thread_started_down) {
+          auto response = client_manager_->receive(5);
+          if (response.object) {
+            process_response(std::move(response));
+          }
         }
+      }).detach();
+      updates_thread_started = true;
+    }
+  } else if (arg == 0) {
+    while (true) {
+      auto response = client_manager_->receive(0);
+      if (response.object) {
+        process_response(std::move(response));
+      } else {
+        break;
       }
-    }).detach();
-    updates_thread_started = true;
+    }
   }
 }
 
@@ -160,7 +160,7 @@ void TdApp::loop() {
                      }
                    });
         std::this_thread::sleep_for(std::chrono::milliseconds(70));
-        updates();
+        updates_thread(0);
       } else if (action == "c") {
         send_query(td_api::make_object<td_api::getChats>(nullptr, 20),
                    [&](Object object) {
@@ -180,7 +180,7 @@ void TdApp::loop() {
                    });
 
         std::this_thread::sleep_for(std::chrono::milliseconds(70));
-        updates();
+        updates_thread(0);
       } else if (action == "m") {
         int time_in;
         std::string text;
@@ -202,7 +202,7 @@ void TdApp::loop() {
         }
         std::cin.ignore();
 
-        updates_thread();
+        updates_thread(1);
 
         while (true) {
           std::time_t now = time(0);
@@ -237,92 +237,6 @@ void TdApp::loop() {
         std::string public_chat;
         std::cout << "\033[38;5;196m|\033[0m \033[38;5;255mInput chat: \033[0m";
         std::cin >> public_chat;
-
-        updates_thread();
-
-        while (CandL) {
-          send_query(
-              td_api::make_object<td_api::searchPublicChat>(public_chat),
-              [this](Object object) {
-                if (object->get_id() == td_api::error::ID) {
-                  std::cout
-                      << "\033[38;5;196m|\033[0m \033[38;5;255mCan't find "
-                         "the channel :(\033[0m"
-                      << std::endl;
-                  CandL = false;
-                  return;
-                }
-
-                auto chat = td_api::move_object_as<td_api::chat>(object);
-                auto join = td_api::make_object<td_api::joinChat>();
-
-                join->chat_id_ = chat->id_;
-
-                send_query(std::move(join), [this, chat_id = chat->id_](
-                                                Object object) {
-                  if (object->get_id() == td_api::error::ID) {
-                    std::cout << "\033[38;5;196m|\033[0m "
-                                 "\033[38;5;255mCould not subscribe\033[0m"
-                              << std::endl;
-                    CandL = false;
-                    return;
-                  }
-
-                  std::cout << "\033[38;5;196m|\033[0m "
-                               "\033[38;5;255mSubscribed!\033[0m"
-                            << std::endl;
-
-                  std::cout << "try to like post..." << std::endl;
-
-                  auto posts = td_api::make_object<td_api::getChatHistory>();
-                  posts->chat_id_ = chat_id;
-                  posts->limit_ = 5;
-                  posts->offset_ = 0;
-                  posts->only_local_ = false;
-
-                  send_query(std::move(posts), [this, chat_id](Object object) {
-                    if (object->get_id() == td_api::error::ID) {
-                      std::cout << "не удалось найти посты в канале :("
-                                << std::endl;
-                      CandL = false;
-                      return;
-                    }
-                    auto postMsg =
-                        td_api::move_object_as<td_api::messages>(object);
-
-                    for (auto &message : postMsg->messages_) {
-                      auto reaction_type =
-                          td_api::make_object<td_api::reactionTypeEmoji>();
-                      reaction_type->emoji_ = "👍";
-
-                      auto reaction =
-                          td_api::make_object<td_api::addMessageReaction>();
-                      reaction->chat_id_ = chat_id;
-                      reaction->message_id_ = message->id_;
-                      reaction->reaction_type_ = std::move(reaction_type);
-                      reaction->is_big_ = false;
-                      reaction->update_recent_reactions_ = false;
-
-                      send_query(std::move(reaction), [this](Object object) {
-                        if (object->get_id() == td_api::error::ID) {
-                          auto error =
-                              td_api::move_object_as<td_api::error>(object);
-                          std::cout << "не смог поставить реакцию: "
-                                    << error->message_ << std::endl;
-                          return;
-                        }
-                        std::cout << "поставил лайк!!!" << std::endl;
-                      });
-                      std::this_thread::sleep_for(
-                          std::chrono::milliseconds(500));
-                    }
-                  });
-                });
-              });
-          std::this_thread::sleep_for(std::chrono::seconds(5));
-        }
-        updates_thread_started = false;
-        updates_thread_started_down = false;
       }
     }
   }
