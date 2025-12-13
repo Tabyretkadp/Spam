@@ -67,18 +67,16 @@ void TdApp::cls() {
 }
 
 void TdApp::updates_thread(int arg) {
-  if (arg == 1) {
-    if (!updates_thread_started) {
-      std::thread([this] {
-        while (!updates_thread_started_down) {
-          auto response = client_manager_->receive(5);
-          if (response.object) {
-            process_response(std::move(response));
-          }
+  if (arg == 1 && !updates_thread_started) {
+    std::thread([this] {
+      while (!updates_thread_started_down) {
+        auto response = client_manager_->receive(5);
+        if (response.object) {
+          process_response(std::move(response));
         }
-      }).detach();
-      updates_thread_started = true;
-    }
+      }
+    }).detach();
+    updates_thread_started = true;
   } else if (arg == 0) {
     while (true) {
       auto response = client_manager_->receive(0);
@@ -305,76 +303,6 @@ void TdApp::process_update(td_api::object_ptr<td_api::Object> update) {
           [&](td_api::updateUser &update_user) {
             auto user_id = update_user.user_->id_;
             users_[user_id] = std::move(update_user.user_);
-          },
-          [&](td_api::updateNewMessage &update_new_message) {
-            if (update_new_message.message_->is_outgoing_) {
-              return;
-            }
-
-            auto chat_id = update_new_message.message_->chat_id_;
-            std::string sender_name;
-            td_api::downcast_call(
-                *update_new_message.message_->sender_id_,
-                overloaded(
-                    [this, &sender_name](td_api::messageSenderUser &user) {
-                      sender_name = get_user_name(user.user_id_);
-                    },
-                    [this, &sender_name](td_api::messageSenderChat &chat) {
-                      sender_name = get_chat_title(chat.chat_id_);
-                    }));
-            std::string text;
-            if (update_new_message.message_->content_->get_id() ==
-                td_api::messageText::ID) {
-              text = static_cast<td_api::messageText &>(
-                         *update_new_message.message_->content_)
-                         .text_->text_;
-            }
-
-            std::string outText;
-            if (!text.empty() && is_valid_username(text)) {
-              outText = "Пытаюсь подписаться на @" + text + "...";
-              send_msg(chat_id, outText);
-
-              send_query(
-                  td::td_api::make_object<td::td_api::searchPublicChat>(text),
-                  [&](Object object) {
-                    if (object->get_id() == td::td_api::error::ID) {
-                      send_msg(chat_id, "Канал не найден :(");
-                    } else {
-                      auto chat =
-                          td::td_api::move_object_as<td::td_api::chat>(object);
-
-                      auto join_request =
-                          td::td_api::make_object<td::td_api::joinChat>();
-                      join_request->chat_id_ = chat->id_;
-
-                      send_query(std::move(join_request), [&](Object object) {
-                        if (object->get_id() == td::td_api::error::ID) {
-                          send_msg(chat_id, "Не удалось подписаться :(");
-                        }
-                      });
-                    }
-
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    send_msg(chat_id, "Подписка успешна ;)");
-                  });
-
-            } else {
-              std::fstream file("outtext.txt");
-              if (!file.is_open()) {
-                outText = "";
-                send_msg(chat_id, outText);
-              } else {
-                getline(file, outText);
-                file.close();
-                size_t pos = 0;
-                while ((pos = outText.find("\\n", pos)) != std::string::npos) {
-                  outText.replace(pos, 2, "\n");
-                  pos += 1;
-                }
-                send_msg(chat_id, outText);
-              }
-            }
           },
           [](auto &update) {}));
 }
